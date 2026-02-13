@@ -174,6 +174,7 @@ class RepositoryResource extends Resource
                     ->preload(),
 
                 Tables\Filters\SelectFilter::make('language')
+                    ->options(fn () => Repository::query()->whereNotNull('language')->distinct()->pluck('language', 'language')->toArray())
                     ->searchable()
                     ->preload()
                     ->multiple(),
