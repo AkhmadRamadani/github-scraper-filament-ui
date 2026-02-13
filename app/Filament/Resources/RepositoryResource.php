@@ -168,6 +168,11 @@ class RepositoryResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('profile')
+                    ->relationship('profile', 'login')
+                    ->searchable()
+                    ->preload(),
+
                 Tables\Filters\SelectFilter::make('language')
                     ->searchable()
                     ->preload()
