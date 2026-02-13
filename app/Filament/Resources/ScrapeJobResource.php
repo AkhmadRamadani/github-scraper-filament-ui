@@ -223,6 +223,11 @@ class ScrapeJobResource extends Resource
                                 'export_files' => $status['export_files'] ?? null,
                             ]);
 
+                            // Save profile and repositories if completed
+                            if ($status['status'] === 'completed' && isset($status['result'])) {
+                                $record->saveScrapedData($status['result']);
+                            }
+
                             Notification::make()
                                 ->title('Job synced successfully')
                                 ->success()
