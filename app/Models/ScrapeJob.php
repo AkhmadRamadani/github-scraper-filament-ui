@@ -192,4 +192,72 @@ class ScrapeJob extends Model
 
         return "{$seconds}s";
     }
+
+    /**
+     * Save scraped data to database.
+     */
+    public function saveScrapedData(array $result): void
+    {
+        $profile = null;
+
+        // Save profile
+        if (isset($result['profile'])) {
+            $profile = $this->profile()->updateOrCreate(
+                ['scrape_job_id' => $this->id],
+                [
+                    'login' => $result['profile']['login'],
+                    'name' => $result['profile']['name'] ?? null,
+                    'bio' => $result['profile']['bio'] ?? null,
+                    'company' => $result['profile']['company'] ?? null,
+                    'location' => $result['profile']['location'] ?? null,
+                    'email' => $result['profile']['email'] ?? null,
+                    'blog' => $result['profile']['blog'] ?? null,
+                    'twitter_username' => $result['profile']['twitter_username'] ?? null,
+                    'public_repos' => $result['profile']['public_repos'] ?? 0,
+                    'public_gists' => $result['profile']['public_gists'] ?? 0,
+                    'followers' => $result['profile']['followers'] ?? 0,
+                    'following' => $result['profile']['following'] ?? 0,
+                    'github_created_at' => $result['profile']['created_at'] ?? null,
+                    'github_updated_at' => $result['profile']['updated_at'] ?? null,
+                    'html_url' => $result['profile']['html_url'],
+                    'avatar_url' => $result['profile']['avatar_url'] ?? null,
+                ]
+            );
+        }
+
+        // Save repositories
+        if (isset($result['repositories'])) {
+            foreach ($result['repositories'] as $repo) {
+                $this->repositories()->updateOrCreate(
+                    [
+                        'scrape_job_id' => $this->id,
+                        'name' => $repo['name'],
+                    ],
+                    [
+                        'profile_id' => $profile?->id,
+                        'description' => $repo['description'] ?? null,
+                        'html_url' => $repo['html_url'],
+                        'stargazers_count' => $repo['stargazers_count'] ?? 0,
+                        'forks_count' => $repo['forks_count'] ?? 0,
+                        'watchers_count' => $repo['watchers_count'] ?? 0,
+                        'language' => $repo['language'] ?? null,
+                        'open_issues_count' => $repo['open_issues_count'] ?? 0,
+                        'github_created_at' => $repo['created_at'] ?? null,
+                        'github_updated_at' => $repo['updated_at'] ?? null,
+                        'size' => $repo['size'] ?? 0,
+                        'default_branch' => $repo['default_branch'] ?? 'main',
+                        'fork' => $repo['fork'] ?? false,
+                        'readme_content' => $repo['readme_content'] ?? null,
+                    ]
+                );
+            }
+        }
+
+        // Update job statistics
+        $this->update([
+            'total_repos' => count($result['repositories'] ?? []),
+            'total_stars' => $result['total_stars'] ?? 0,
+            'total_forks' => $result['total_forks'] ?? 0,
+        ]);
+    }
 }

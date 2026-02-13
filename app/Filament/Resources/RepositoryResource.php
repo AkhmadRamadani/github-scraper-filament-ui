@@ -168,7 +168,13 @@ class RepositoryResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('profile')
+                    ->relationship('profile', 'login')
+                    ->searchable()
+                    ->preload(),
+
                 Tables\Filters\SelectFilter::make('language')
+                    ->options(fn () => Repository::query()->whereNotNull('language')->distinct()->pluck('language', 'language')->toArray())
                     ->searchable()
                     ->preload()
                     ->multiple(),
