@@ -40,47 +40,63 @@ class ListProfiles extends ListRecords
                         )->post('https://cvreader.ramashook.my.id/parse-cv');
 
                         if ($response->successful()) {
-                            $parsedData = $response->json();
+                            $json = $response->json();
+                            $parsedData = $json['data'] ?? [];
 
                             $name = $parsedData['name'] ?? null;
                             $email = $parsedData['email'] ?? null;
                             $phone = $parsedData['phone'] ?? null;
-                            $skills = $parsedData['skills'] ?? [];
-                            if (is_array($skills)) {
-                                $skills = implode(', ', $skills);
-                            }
-                            $summary = $parsedData['summary'] ?? $parsedData['objective'] ?? '';
-                            $experience = $parsedData['experience'] ?? [];
+                            $title = $parsedData['title'] ?? null;
+                            $location = $parsedData['location'] ?? null;
 
+                            // Determine HTML URL
+                            $html_url = $parsedData['website'] ?? $parsedData['github'] ?? $parsedData['linkedin'] ?? '#';
+
+                            // Company
                             $company = null;
-                            if (is_array($experience) && count($experience) > 0) {
-                                $firstExp = $experience[0];
-                                // Handle if experience is string or array
-                                if (is_array($firstExp)) {
-                                     $company = $firstExp['company'] ?? $firstExp['organization'] ?? null;
-                                }
-                            } elseif (is_string($experience)) {
-                                $company = $experience;
+                            $workExperience = $parsedData['work_experience'] ?? [];
+                            if (is_array($workExperience) && count($workExperience) > 0) {
+                                $firstExp = $workExperience[0];
+                                $company = $firstExp['company'] ?? null;
                             }
 
-                            $bio = $summary;
-                            if ($skills) {
-                                $bio .= "\n\nSkills: " . $skills;
+                            // Build Bio
+                            $bioParts = [];
+                            if ($title) {
+                                $bioParts[] = "**{$title}**";
                             }
+                            if (isset($parsedData['summary'])) {
+                                $bioParts[] = $parsedData['summary'];
+                            }
+
+                            $technicalSkills = $parsedData['technical_skills'] ?? [];
+                            if (is_array($technicalSkills) && count($technicalSkills) > 0) {
+                                $skillsList = [];
+                                foreach ($technicalSkills as $category => $items) {
+                                    if (is_array($items)) {
+                                        $skillsList[] = "- **{$category}**: " . implode(', ', $items);
+                                    }
+                                }
+                                if (count($skillsList) > 0) {
+                                    $bioParts[] = "\n**Skills:**\n" . implode("\n", $skillsList);
+                                }
+                            }
+
+                            $bio = implode("\n\n", $bioParts);
+
                             if ($phone) {
-                                $bio .= "\n\nPhone: " . $phone;
+                                $bio .= "\n\nPhone: {$phone}";
                             }
+
 
                             // Generate login if missing
-                            $login = $parsedData['login'] ?? null;
-                            if (!$login) {
-                                if ($email) {
-                                    $login = explode('@', $email)[0];
-                                } elseif ($name) {
-                                    $login = Str::slug($name);
-                                } else {
-                                    $login = 'user-' . Str::random(8);
-                                }
+                            $login = null;
+                            if ($email) {
+                                $login = explode('@', $email)[0];
+                            } elseif ($name) {
+                                $login = Str::slug($name);
+                            } else {
+                                $login = 'user-' . Str::random(8);
                             }
 
                             // Ensure login is unique
@@ -94,10 +110,11 @@ class ListProfiles extends ListRecords
                                 'email' => $email,
                                 'bio' => $bio,
                                 'company' => $company,
-                                'location' => $parsedData['location'] ?? null,
-                                'html_url' => $parsedData['website'] ?? '#',
+                                'location' => $location,
+                                'html_url' => $html_url,
                                 'cv_file' => $data['cv_file'],
                                 'scrape_job_id' => null,
+                                'avatar_url' => $name ? "https://ui-avatars.com/api/?name=" . urlencode($name) . "&size=200" : null,
                             ]);
 
                             Notification::make()
