@@ -4,6 +4,8 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\RepositoryResource\Pages;
 use App\Models\Repository;
+use Filament\Forms;
+use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -21,6 +23,69 @@ class RepositoryResource extends Resource
     protected static ?int $navigationSort = 3;
 
     protected static ?string $pluralLabel = 'Repositories';
+
+    public static function form(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Forms\Components\Section::make('Repository Information')
+                    ->schema([
+                        Forms\Components\TextInput::make('name')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('html_url')
+                            ->label('HTML URL')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\Textarea::make('description')
+                            ->maxLength(65535)
+                            ->columnSpanFull(),
+                        Forms\Components\Select::make('profile_id')
+                            ->relationship('profile', 'login')
+                            ->searchable()
+                            ->preload(),
+                        Forms\Components\Select::make('scrape_job_id')
+                            ->relationship('scrapeJob', 'job_id')
+                            ->searchable()
+                            ->preload(),
+                        Forms\Components\TextInput::make('language')
+                            ->maxLength(255),
+                    ])
+                    ->columns(2),
+
+                Forms\Components\Section::make('Statistics')
+                    ->schema([
+                        Forms\Components\TextInput::make('stargazers_count')
+                            ->numeric()
+                            ->default(0),
+                        Forms\Components\TextInput::make('forks_count')
+                            ->numeric()
+                            ->default(0),
+                        Forms\Components\TextInput::make('watchers_count')
+                            ->numeric()
+                            ->default(0),
+                        Forms\Components\TextInput::make('open_issues_count')
+                            ->numeric()
+                            ->default(0),
+                        Forms\Components\TextInput::make('size')
+                            ->numeric()
+                            ->default(0),
+                    ])
+                    ->columns(3),
+
+                Forms\Components\Section::make('Details')
+                    ->schema([
+                        Forms\Components\TextInput::make('default_branch')
+                            ->maxLength(255)
+                            ->default('main'),
+                        Forms\Components\Toggle::make('fork')
+                            ->required(),
+                        Forms\Components\Textarea::make('readme_content')
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(2),
+            ]);
+    }
 
     public static function infolist(Infolist $infolist): Infolist
     {
@@ -202,6 +267,7 @@ class RepositoryResource extends Resource
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
+                Tables\Actions\EditAction::make(),
                 Tables\Actions\Action::make('view_on_github')
                     ->label('GitHub')
                     ->icon('heroicon-o-arrow-top-right-on-square')
@@ -221,7 +287,9 @@ class RepositoryResource extends Resource
     {
         return [
             'index' => Pages\ListRepositories::route('/'),
+            'create' => Pages\CreateRepository::route('/create'),
             'view' => Pages\ViewRepository::route('/{record}'),
+            'edit' => Pages\EditRepository::route('/{record}/edit'),
         ];
     }
 

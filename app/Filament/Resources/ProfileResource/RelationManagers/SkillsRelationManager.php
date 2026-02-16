@@ -21,6 +21,8 @@ class SkillsRelationManager extends RelationManager
                 Forms\Components\TextInput::make('name')
                     ->required()
                     ->maxLength(255),
+                Forms\Components\TextInput::make('category')
+                    ->maxLength(255),
             ]);
     }
 
@@ -30,6 +32,7 @@ class SkillsRelationManager extends RelationManager
             ->recordTitleAttribute('name')
             ->columns([
                 Tables\Columns\TextColumn::make('name'),
+                Tables\Columns\TextColumn::make('category'),
             ])
             ->filters([
                 //

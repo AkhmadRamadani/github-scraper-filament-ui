@@ -21,6 +21,10 @@ class CertificationsRelationManager extends RelationManager
                 Forms\Components\TextInput::make('name')
                     ->required()
                     ->maxLength(255),
+                Forms\Components\TextInput::make('issuer')
+                    ->maxLength(255),
+                Forms\Components\TextInput::make('date')
+                    ->maxLength(255),
             ]);
     }
 
@@ -30,6 +34,8 @@ class CertificationsRelationManager extends RelationManager
             ->recordTitleAttribute('name')
             ->columns([
                 Tables\Columns\TextColumn::make('name'),
+                Tables\Columns\TextColumn::make('issuer'),
+                Tables\Columns\TextColumn::make('date'),
             ])
             ->filters([
                 //
