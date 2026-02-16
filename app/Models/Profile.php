@@ -29,6 +29,7 @@ class Profile extends Model
         'github_updated_at',
         'html_url',
         'avatar_url',
+        'cv_file',
     ];
 
     protected $casts = [

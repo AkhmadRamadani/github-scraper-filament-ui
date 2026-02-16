@@ -11,6 +11,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
+use Illuminate\Support\Facades\Storage;
 
 class ProfileResource extends Resource
 {
@@ -43,6 +44,13 @@ class ProfileResource extends Resource
                         Infolists\Components\TextEntry::make('bio')
                             ->columnSpanFull()
                             ->prose(),
+                        Infolists\Components\TextEntry::make('cv_file')
+                            ->label('CV File')
+                            ->url(fn ($record) => Storage::disk('public')->url($record->cv_file))
+                            ->openUrlInNewTab()
+                            ->visible(fn ($record) => $record->cv_file)
+                            ->icon('heroicon-m-document')
+                            ->columnSpanFull(),
                     ])
                     ->columns(3),
 
@@ -66,6 +74,11 @@ class ProfileResource extends Resource
 
                 Infolists\Components\Section::make('Statistics')
                     ->schema([
+                        Infolists\Components\TextEntry::make('repositories_count')
+                            ->label('Total Repositories')
+                            ->state(fn ($record) => $record->repositories()->count())
+                            ->numeric()
+                            ->icon('heroicon-m-circle-stack'),
                         Infolists\Components\TextEntry::make('public_repos')
                             ->label('Public Repositories')
                             ->numeric()
