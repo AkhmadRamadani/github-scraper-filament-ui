@@ -55,6 +55,25 @@ class ListProfiles extends ListRecords
                             // Determine HTML URL
                             $html_url = $parsedData['website'] ?? $parsedData['github'] ?? $linkedinUrl ?? '#';
 
+                            // Determine GitHub Username
+                            $githubUsername = null;
+                            $githubUrl = $parsedData['github'] ?? null;
+
+                            if (!$githubUrl && $html_url && str_contains($html_url, 'github.com')) {
+                                $githubUrl = $html_url;
+                            }
+
+                            if ($githubUrl) {
+                                if (!str_starts_with($githubUrl, 'http')) {
+                                    $githubUrl = 'https://' . $githubUrl;
+                                }
+                                $path = parse_url($githubUrl, PHP_URL_PATH);
+                                if ($path) {
+                                    $parts = explode('/', trim($path, '/'));
+                                    $githubUsername = $parts[0] ?? null;
+                                }
+                            }
+
                             // Company
                             $company = null;
                             $workExperience = $parsedData['work_experience'] ?? [];
@@ -79,6 +98,14 @@ class ListProfiles extends ListRecords
                                 $profile = Profile::where('email', $email)->first();
                             }
 
+                            // Determine Avatar URL
+                            $avatarUrl = null;
+                            if ($githubUsername) {
+                                $avatarUrl = "https://github.com/{$githubUsername}.png";
+                            } elseif ($name) {
+                                $avatarUrl = "https://ui-avatars.com/api/?name=" . urlencode($name) . "&size=200";
+                            }
+
                             $updateData = [
                                 'name' => $name,
                                 'bio' => $bio,
@@ -88,13 +115,20 @@ class ListProfiles extends ListRecords
                                 'cv_file' => $data['cv_file'],
                                 'phone' => $phone,
                                 'linkedin_url' => $linkedinUrl,
+                                'avatar_url' => $avatarUrl,
                             ];
 
                             if ($profile) {
+                                // Only update if avatar is not already set or if we have a better one (GitHub)
+                                if ($profile->avatar_url && !$githubUsername) {
+                                     unset($updateData['avatar_url']);
+                                }
                                 $profile->update(array_filter($updateData, fn($value) => !is_null($value)));
                             } else {
                                 $login = null;
-                                if ($email) {
+                                if ($githubUsername) {
+                                    $login = $githubUsername;
+                                } elseif ($email) {
                                     $login = explode('@', $email)[0];
                                 } elseif ($name) {
                                     $login = Str::slug($name);
@@ -109,7 +143,6 @@ class ListProfiles extends ListRecords
                                 $createData = array_merge($updateData, [
                                     'login' => $login,
                                     'scrape_job_id' => null,
-                                    'avatar_url' => $name ? "https://ui-avatars.com/api/?name=" . urlencode($name) . "&size=200" : null,
                                 ]);
 
                                 $profile = Profile::create($createData);
@@ -218,25 +251,6 @@ class ListProfiles extends ListRecords
                             $notification = Notification::make()
                                 ->title('CV Imported Successfully')
                                 ->success();
-
-                            // Trigger GitHub Scraper
-                            $githubUsername = null;
-                            $githubUrl = $parsedData['github'] ?? null;
-
-                            if (!$githubUrl && $profile->html_url && str_contains($profile->html_url, 'github.com')) {
-                                $githubUrl = $profile->html_url;
-                            }
-
-                            if ($githubUrl) {
-                                if (!str_starts_with($githubUrl, 'http')) {
-                                    $githubUrl = 'https://' . $githubUrl;
-                                }
-                                $path = parse_url($githubUrl, PHP_URL_PATH);
-                                if ($path) {
-                                    $parts = explode('/', trim($path, '/'));
-                                    $githubUsername = $parts[0] ?? null;
-                                }
-                            }
 
                             if ($githubUsername) {
                                 try {
