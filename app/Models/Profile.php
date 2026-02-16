@@ -30,11 +30,25 @@ class Profile extends Model
         'html_url',
         'avatar_url',
         'cv_file',
+        'technical_skills',
+        'work_experience',
+        'education',
+        'projects',
+        'certifications',
+        'volunteering',
+        'phone',
+        'linkedin_url',
     ];
 
     protected $casts = [
         'github_created_at' => 'datetime',
         'github_updated_at' => 'datetime',
+        'technical_skills' => 'array',
+        'work_experience' => 'array',
+        'education' => 'array',
+        'projects' => 'array',
+        'certifications' => 'array',
+        'volunteering' => 'array',
     ];
 
     /**

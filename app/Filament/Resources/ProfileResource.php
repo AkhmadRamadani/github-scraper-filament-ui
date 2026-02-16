@@ -62,15 +62,118 @@ class ProfileResource extends Resource
                             ->icon('heroicon-m-map-pin'),
                         Infolists\Components\TextEntry::make('email')
                             ->icon('heroicon-m-envelope'),
+                        Infolists\Components\TextEntry::make('phone')
+                            ->icon('heroicon-m-phone')
+                            ->visible(fn ($record) => $record->phone),
                         Infolists\Components\TextEntry::make('blog')
                             ->url(fn ($record) => $record->blog, true)
                             ->icon('heroicon-m-globe-alt'),
+                        Infolists\Components\TextEntry::make('linkedin_url')
+                            ->label('LinkedIn')
+                            ->url(fn ($record) => str_starts_with($record->linkedin_url, 'http') ? $record->linkedin_url : 'https://' . $record->linkedin_url, true)
+                            ->icon('heroicon-m-link')
+                            ->visible(fn ($record) => $record->linkedin_url),
                         Infolists\Components\TextEntry::make('twitter_username')
                             ->label('Twitter')
                             ->url(fn ($record) => "https://twitter.com/{$record->twitter_username}", true)
                             ->icon('heroicon-m-at-symbol'),
                     ])
                     ->columns(3),
+
+                Infolists\Components\Section::make('Work Experience')
+                    ->schema([
+                        Infolists\Components\RepeatableEntry::make('work_experience')
+                            ->schema([
+                                Infolists\Components\TextEntry::make('position')
+                                    ->weight('bold')
+                                    ->label('Position'),
+                                Infolists\Components\TextEntry::make('company')
+                                    ->label('Company'),
+                                Infolists\Components\TextEntry::make('duration')
+                                    ->label('Duration')
+                                    ->state(fn ($record) => ($record['start_date'] ?? '') . ' - ' . ($record['end_date'] ?? '')),
+                                Infolists\Components\TextEntry::make('location')
+                                    ->label('Location'),
+                                Infolists\Components\TextEntry::make('responsibilities')
+                                    ->label('Responsibilities')
+                                    ->listWithLineBreaks()
+                                    ->bulleted()
+                                    ->columnSpanFull(),
+                            ])
+                            ->columns(4),
+                    ])
+                    ->visible(fn ($record) => !empty($record->work_experience))
+                    ->collapsible(),
+
+                Infolists\Components\Section::make('Education')
+                    ->schema([
+                        Infolists\Components\RepeatableEntry::make('education')
+                            ->schema([
+                                Infolists\Components\TextEntry::make('institution')
+                                    ->weight('bold'),
+                                Infolists\Components\TextEntry::make('degree'),
+                                Infolists\Components\TextEntry::make('duration')
+                                    ->label('Duration')
+                                    ->state(fn ($record) => ($record['start_date'] ?? '') . ' - ' . ($record['end_date'] ?? '')),
+                                Infolists\Components\TextEntry::make('location'),
+                            ])
+                            ->columns(4),
+                    ])
+                    ->visible(fn ($record) => !empty($record->education))
+                    ->collapsible(),
+
+                Infolists\Components\Section::make('Skills')
+                    ->schema([
+                        Infolists\Components\TextEntry::make('technical_skills')
+                            ->label('')
+                            ->formatStateUsing(function ($state) {
+                                if (!is_array($state)) return null;
+                                $html = '<div class="flex flex-col gap-2">';
+                                foreach ($state as $category => $skills) {
+                                    $skillString = is_array($skills) ? implode(', ', $skills) : $skills;
+                                    $html .= "<div><span class='font-bold'>{$category}:</span> {$skillString}</div>";
+                                }
+                                $html .= '</div>';
+                                return new \Illuminate\Support\HtmlString($html);
+                            }),
+                    ])
+                    ->visible(fn ($record) => !empty($record->technical_skills)),
+
+                Infolists\Components\Section::make('Projects')
+                    ->schema([
+                         Infolists\Components\RepeatableEntry::make('projects')
+                            ->schema([
+                                Infolists\Components\TextEntry::make('name')
+                                    ->weight('bold'),
+                                Infolists\Components\TextEntry::make('description')
+                                    ->columnSpanFull(),
+                            ])
+                            ->columns(2),
+                    ])
+                    ->visible(fn ($record) => !empty($record->projects))
+                    ->collapsible(),
+
+                Infolists\Components\Section::make('Certifications & Volunteering')
+                    ->schema([
+                         Infolists\Components\RepeatableEntry::make('certifications')
+                            ->label('Certifications')
+                            ->schema([
+                                Infolists\Components\TextEntry::make('name')
+                                    ->weight('bold'),
+                                Infolists\Components\TextEntry::make('issuer'),
+                                Infolists\Components\TextEntry::make('date'),
+                            ])
+                            ->columns(3)
+                            ->visible(fn ($record) => !empty($record->certifications)),
+
+                         Infolists\Components\TextEntry::make('volunteering')
+                            ->label('Volunteering')
+                            ->listWithLineBreaks()
+                            ->bulleted()
+                            ->visible(fn ($record) => !empty($record->volunteering)),
+                    ])
+                    ->visible(fn ($record) => !empty($record->certifications) || !empty($record->volunteering))
+                    ->collapsible(),
 
                 Infolists\Components\Section::make('Statistics')
                     ->schema([

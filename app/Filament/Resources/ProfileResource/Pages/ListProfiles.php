@@ -50,9 +50,10 @@ class ListProfiles extends ListRecords
                             $phone = $parsedData['phone'] ?? null;
                             $title = $parsedData['title'] ?? null;
                             $location = $parsedData['location'] ?? null;
+                            $linkedinUrl = $parsedData['linkedin'] ?? null;
 
                             // Determine HTML URL
-                            $html_url = $parsedData['website'] ?? $parsedData['github'] ?? $parsedData['linkedin'] ?? '#';
+                            $html_url = $parsedData['website'] ?? $parsedData['github'] ?? $linkedinUrl ?? '#';
 
                             // Company
                             $company = null;
@@ -62,7 +63,7 @@ class ListProfiles extends ListRecords
                                 $company = $firstExp['company'] ?? null;
                             }
 
-                            // Build Bio
+                            // Build Bio (Keep it simple now that we have structured fields)
                             $bioParts = [];
                             if ($title) {
                                 $bioParts[] = "**{$title}**";
@@ -71,24 +72,7 @@ class ListProfiles extends ListRecords
                                 $bioParts[] = $parsedData['summary'];
                             }
 
-                            $technicalSkills = $parsedData['technical_skills'] ?? [];
-                            if (is_array($technicalSkills) && count($technicalSkills) > 0) {
-                                $skillsList = [];
-                                foreach ($technicalSkills as $category => $items) {
-                                    if (is_array($items)) {
-                                        $skillsList[] = "- **{$category}**: " . implode(', ', $items);
-                                    }
-                                }
-                                if (count($skillsList) > 0) {
-                                    $bioParts[] = "\n**Skills:**\n" . implode("\n", $skillsList);
-                                }
-                            }
-
                             $bio = implode("\n\n", $bioParts);
-
-                            if ($phone) {
-                                $bio .= "\n\nPhone: {$phone}";
-                            }
 
                             // Find existing profile or create new one
                             $profile = null;
@@ -96,19 +80,28 @@ class ListProfiles extends ListRecords
                                 $profile = Profile::where('email', $email)->first();
                             }
 
-                            $isNewProfile = false;
+                            $updateData = [
+                                'name' => $name,
+                                'bio' => $bio,
+                                'company' => $company,
+                                'location' => $location,
+                                'html_url' => ($html_url !== '#' && $html_url) ? $html_url : ($profile?->html_url ?? '#'),
+                                'cv_file' => $data['cv_file'],
+                                'technical_skills' => $parsedData['technical_skills'] ?? null,
+                                'work_experience' => $parsedData['work_experience'] ?? null,
+                                'education' => $parsedData['education'] ?? null,
+                                'projects' => $parsedData['projects'] ?? null,
+                                'certifications' => $parsedData['certifications'] ?? null,
+                                'volunteering' => $parsedData['volunteering'] ?? null,
+                                'phone' => $phone,
+                                'linkedin_url' => $linkedinUrl,
+                            ];
+
                             if ($profile) {
                                 // Update existing profile
-                                $profile->update([
-                                    'name' => $name ?? $profile->name,
-                                    'bio' => $bio ?? $profile->bio,
-                                    'company' => $company ?? $profile->company,
-                                    'location' => $location ?? $profile->location,
-                                    'html_url' => ($html_url !== '#' && $html_url) ? $html_url : $profile->html_url,
-                                    'cv_file' => $data['cv_file'],
-                                ]);
+                                // Only update fields if they are present in the parsed data, or keep existing
+                                $profile->update(array_filter($updateData, fn($value) => !is_null($value)));
                             } else {
-                                $isNewProfile = true;
                                 // Generate login if missing
                                 $login = null;
                                 if ($email) {
@@ -124,18 +117,13 @@ class ListProfiles extends ListRecords
                                     $login = $login . '-' . Str::random(4);
                                 }
 
-                                $profile = Profile::create([
+                                $createData = array_merge($updateData, [
                                     'login' => $login,
-                                    'name' => $name,
-                                    'email' => $email,
-                                    'bio' => $bio,
-                                    'company' => $company,
-                                    'location' => $location,
-                                    'html_url' => $html_url,
-                                    'cv_file' => $data['cv_file'],
                                     'scrape_job_id' => null,
                                     'avatar_url' => $name ? "https://ui-avatars.com/api/?name=" . urlencode($name) . "&size=200" : null,
                                 ]);
+
+                                $profile = Profile::create($createData);
                             }
 
                             $notification = Notification::make()
