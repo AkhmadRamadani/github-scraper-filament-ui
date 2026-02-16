@@ -4,6 +4,8 @@ namespace App\Filament\Resources\ProfileResource\Pages;
 
 use App\Filament\Resources\ProfileResource;
 use App\Models\Profile;
+use App\Models\ScrapeJob;
+use App\Services\GitHubScraperService;
 use Filament\Actions;
 use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
@@ -88,39 +90,109 @@ class ListProfiles extends ListRecords
                                 $bio .= "\n\nPhone: {$phone}";
                             }
 
-
-                            // Generate login if missing
-                            $login = null;
+                            // Find existing profile or create new one
+                            $profile = null;
                             if ($email) {
-                                $login = explode('@', $email)[0];
-                            } elseif ($name) {
-                                $login = Str::slug($name);
-                            } else {
-                                $login = 'user-' . Str::random(8);
+                                $profile = Profile::where('email', $email)->first();
                             }
 
-                            // Ensure login is unique
-                             if (Profile::where('login', $login)->exists()) {
-                                $login = $login . '-' . Str::random(4);
-                             }
+                            $isNewProfile = false;
+                            if ($profile) {
+                                // Update existing profile
+                                $profile->update([
+                                    'name' => $name ?? $profile->name,
+                                    'bio' => $bio ?? $profile->bio,
+                                    'company' => $company ?? $profile->company,
+                                    'location' => $location ?? $profile->location,
+                                    'html_url' => ($html_url !== '#' && $html_url) ? $html_url : $profile->html_url,
+                                    'cv_file' => $data['cv_file'],
+                                ]);
+                            } else {
+                                $isNewProfile = true;
+                                // Generate login if missing
+                                $login = null;
+                                if ($email) {
+                                    $login = explode('@', $email)[0];
+                                } elseif ($name) {
+                                    $login = Str::slug($name);
+                                } else {
+                                    $login = 'user-' . Str::random(8);
+                                }
 
-                            Profile::create([
-                                'login' => $login,
-                                'name' => $name,
-                                'email' => $email,
-                                'bio' => $bio,
-                                'company' => $company,
-                                'location' => $location,
-                                'html_url' => $html_url,
-                                'cv_file' => $data['cv_file'],
-                                'scrape_job_id' => null,
-                                'avatar_url' => $name ? "https://ui-avatars.com/api/?name=" . urlencode($name) . "&size=200" : null,
-                            ]);
+                                // Ensure login is unique
+                                if (Profile::where('login', $login)->exists()) {
+                                    $login = $login . '-' . Str::random(4);
+                                }
 
-                            Notification::make()
+                                $profile = Profile::create([
+                                    'login' => $login,
+                                    'name' => $name,
+                                    'email' => $email,
+                                    'bio' => $bio,
+                                    'company' => $company,
+                                    'location' => $location,
+                                    'html_url' => $html_url,
+                                    'cv_file' => $data['cv_file'],
+                                    'scrape_job_id' => null,
+                                    'avatar_url' => $name ? "https://ui-avatars.com/api/?name=" . urlencode($name) . "&size=200" : null,
+                                ]);
+                            }
+
+                            $notification = Notification::make()
                                 ->title('CV Imported Successfully')
-                                ->success()
-                                ->send();
+                                ->success();
+
+                            // Trigger GitHub Scraper if valid GitHub URL
+                            $githubUsername = null;
+                            $githubUrl = $parsedData['github'] ?? null;
+
+                            // If not explicitly provided, check html_url
+                            if (!$githubUrl && $profile->html_url && str_contains($profile->html_url, 'github.com')) {
+                                $githubUrl = $profile->html_url;
+                            }
+
+                            if ($githubUrl) {
+                                if (!str_starts_with($githubUrl, 'http')) {
+                                    $githubUrl = 'https://' . $githubUrl;
+                                }
+                                $path = parse_url($githubUrl, PHP_URL_PATH);
+                                if ($path) {
+                                    $parts = explode('/', trim($path, '/'));
+                                    $githubUsername = $parts[0] ?? null;
+                                }
+                            }
+
+                            if ($githubUsername) {
+                                try {
+                                    $scrapeJob = ScrapeJob::create([
+                                        'job_id' => Str::uuid()->toString(),
+                                        'user_id' => auth()->id(),
+                                        'username' => $githubUsername,
+                                        'status' => 'pending',
+                                        'progress' => 0,
+                                    ]);
+
+                                    $profile->update(['scrape_job_id' => $scrapeJob->id]);
+
+                                    $service = app(GitHubScraperService::class);
+                                    $scrapeResponse = $service->scrapeAsync(
+                                        username: $githubUsername,
+                                        webhookUrl: null
+                                    );
+
+                                    $scrapeJob->update([
+                                        'job_id' => $scrapeResponse['job_id'],
+                                        'status' => $scrapeResponse['status'],
+                                    ]);
+
+                                    $notification->body("CV Imported. GitHub scraping started for user: {$githubUsername}");
+                                } catch (\Exception $e) {
+                                    $notification->body("CV Imported, but failed to start GitHub scraping: " . $e->getMessage())
+                                        ->warning();
+                                }
+                            }
+
+                            $notification->send();
 
                         } else {
                             throw new \Exception('API Error: ' . $response->status() . ' - ' . $response->body());
