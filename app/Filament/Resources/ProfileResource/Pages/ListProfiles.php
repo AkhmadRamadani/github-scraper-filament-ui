@@ -63,7 +63,7 @@ class ListProfiles extends ListRecords
                                 $company = $firstExp['company'] ?? null;
                             }
 
-                            // Build Bio (Keep it simple now that we have structured fields)
+                            // Build Bio
                             $bioParts = [];
                             if ($title) {
                                 $bioParts[] = "**{$title}**";
@@ -71,7 +71,6 @@ class ListProfiles extends ListRecords
                             if (isset($parsedData['summary'])) {
                                 $bioParts[] = $parsedData['summary'];
                             }
-
                             $bio = implode("\n\n", $bioParts);
 
                             // Find existing profile or create new one
@@ -87,22 +86,13 @@ class ListProfiles extends ListRecords
                                 'location' => $location,
                                 'html_url' => ($html_url !== '#' && $html_url) ? $html_url : ($profile?->html_url ?? '#'),
                                 'cv_file' => $data['cv_file'],
-                                'technical_skills' => $parsedData['technical_skills'] ?? null,
-                                'work_experience' => $parsedData['work_experience'] ?? null,
-                                'education' => $parsedData['education'] ?? null,
-                                'projects' => $parsedData['projects'] ?? null,
-                                'certifications' => $parsedData['certifications'] ?? null,
-                                'volunteering' => $parsedData['volunteering'] ?? null,
                                 'phone' => $phone,
                                 'linkedin_url' => $linkedinUrl,
                             ];
 
                             if ($profile) {
-                                // Update existing profile
-                                // Only update fields if they are present in the parsed data, or keep existing
                                 $profile->update(array_filter($updateData, fn($value) => !is_null($value)));
                             } else {
-                                // Generate login if missing
                                 $login = null;
                                 if ($email) {
                                     $login = explode('@', $email)[0];
@@ -112,7 +102,6 @@ class ListProfiles extends ListRecords
                                     $login = 'user-' . Str::random(8);
                                 }
 
-                                // Ensure login is unique
                                 if (Profile::where('login', $login)->exists()) {
                                     $login = $login . '-' . Str::random(4);
                                 }
@@ -126,15 +115,114 @@ class ListProfiles extends ListRecords
                                 $profile = Profile::create($createData);
                             }
 
+                            // --- Update Related Tables ---
+
+                            // 1. Experiences
+                            $profile->experiences()->delete();
+                            if (!empty($parsedData['work_experience']) && is_array($parsedData['work_experience'])) {
+                                foreach ($parsedData['work_experience'] as $exp) {
+                                    $profile->experiences()->create([
+                                        'position' => $exp['position'] ?? $exp['title'] ?? null,
+                                        'company' => $exp['company'] ?? $exp['organization'] ?? null,
+                                        'start_date' => $exp['start_date'] ?? null,
+                                        'end_date' => $exp['end_date'] ?? null,
+                                        'location' => $exp['location'] ?? null,
+                                        'responsibilities' => is_array($exp['responsibilities'] ?? null)
+                                            ? implode("\n", $exp['responsibilities'])
+                                            : ($exp['responsibilities'] ?? null),
+                                    ]);
+                                }
+                            }
+
+                            // 2. Education
+                            $profile->educations()->delete();
+                            if (!empty($parsedData['education']) && is_array($parsedData['education'])) {
+                                foreach ($parsedData['education'] as $edu) {
+                                    $profile->educations()->create([
+                                        'institution' => $edu['institution'] ?? $edu['school'] ?? null,
+                                        'degree' => $edu['degree'] ?? null,
+                                        'start_date' => $edu['start_date'] ?? null,
+                                        'end_date' => $edu['end_date'] ?? null,
+                                        'location' => $edu['location'] ?? null,
+                                    ]);
+                                }
+                            }
+
+                            // 3. Projects
+                            $profile->projects()->delete();
+                            if (!empty($parsedData['projects']) && is_array($parsedData['projects'])) {
+                                foreach ($parsedData['projects'] as $proj) {
+                                    $profile->projects()->create([
+                                        'name' => $proj['name'] ?? null,
+                                        'description' => $proj['description'] ?? null,
+                                        'url' => $proj['url'] ?? null,
+                                    ]);
+                                }
+                            }
+
+                            // 4. Skills
+                            $profile->skills()->delete();
+                            if (!empty($parsedData['technical_skills']) && is_array($parsedData['technical_skills'])) {
+                                foreach ($parsedData['technical_skills'] as $category => $items) {
+                                    if (is_array($items)) {
+                                        foreach ($items as $item) {
+                                            $profile->skills()->create([
+                                                'category' => $category,
+                                                'name' => $item,
+                                            ]);
+                                        }
+                                    } elseif (is_string($items)) {
+                                         // If it's just a simple key-value where value is string
+                                        $profile->skills()->create([
+                                            'category' => 'General',
+                                            'name' => $items,
+                                        ]);
+                                    }
+                                }
+                            }
+
+                            // 5. Certifications
+                            $profile->certifications()->delete();
+                            if (!empty($parsedData['certifications']) && is_array($parsedData['certifications'])) {
+                                foreach ($parsedData['certifications'] as $cert) {
+                                    $profile->certifications()->create([
+                                        'name' => $cert['name'] ?? null,
+                                        'issuer' => $cert['issuer'] ?? null,
+                                        'date' => $cert['date'] ?? null,
+                                    ]);
+                                }
+                            }
+
+                            // 6. Volunteering
+                            $profile->volunteerings()->delete();
+                            if (!empty($parsedData['volunteering']) && is_array($parsedData['volunteering'])) {
+                                foreach ($parsedData['volunteering'] as $vol) {
+                                    // Handle if volunteering is just a list of strings
+                                    if (is_string($vol)) {
+                                         $profile->volunteerings()->create([
+                                            'organization' => $vol,
+                                            'description' => $vol,
+                                        ]);
+                                    } elseif (is_array($vol)) {
+                                        $profile->volunteerings()->create([
+                                            'organization' => $vol['organization'] ?? null,
+                                            'role' => $vol['role'] ?? $vol['position'] ?? null,
+                                            'start_date' => $vol['start_date'] ?? null,
+                                            'end_date' => $vol['end_date'] ?? null,
+                                            'description' => $vol['description'] ?? null,
+                                        ]);
+                                    }
+                                }
+                            }
+
                             $notification = Notification::make()
                                 ->title('CV Imported Successfully')
                                 ->success();
 
-                            // Trigger GitHub Scraper if valid GitHub URL
+                            // Trigger GitHub Scraper
                             $githubUsername = null;
                             $githubUrl = $parsedData['github'] ?? null;
 
-                            // If not explicitly provided, check html_url
                             if (!$githubUrl && $profile->html_url && str_contains($profile->html_url, 'github.com')) {
                                 $githubUrl = $profile->html_url;
                             }

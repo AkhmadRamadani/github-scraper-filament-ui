@@ -30,12 +30,6 @@ class Profile extends Model
         'html_url',
         'avatar_url',
         'cv_file',
-        'technical_skills',
-        'work_experience',
-        'education',
-        'projects',
-        'certifications',
-        'volunteering',
         'phone',
         'linkedin_url',
     ];
@@ -43,12 +37,6 @@ class Profile extends Model
     protected $casts = [
         'github_created_at' => 'datetime',
         'github_updated_at' => 'datetime',
-        'technical_skills' => 'array',
-        'work_experience' => 'array',
-        'education' => 'array',
-        'projects' => 'array',
-        'certifications' => 'array',
-        'volunteering' => 'array',
     ];
 
     /**
@@ -65,6 +53,36 @@ class Profile extends Model
     public function repositories(): HasMany
     {
         return $this->hasMany(Repository::class);
+    }
+
+    public function experiences(): HasMany
+    {
+        return $this->hasMany(ProfileExperience::class);
+    }
+
+    public function educations(): HasMany
+    {
+        return $this->hasMany(ProfileEducation::class);
+    }
+
+    public function projects(): HasMany
+    {
+        return $this->hasMany(ProfileProject::class);
+    }
+
+    public function skills(): HasMany
+    {
+        return $this->hasMany(ProfileSkill::class);
+    }
+
+    public function certifications(): HasMany
+    {
+        return $this->hasMany(ProfileCertification::class);
+    }
+
+    public function volunteerings(): HasMany
+    {
+        return $this->hasMany(ProfileVolunteering::class);
     }
 
     /**
