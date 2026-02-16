@@ -21,6 +21,14 @@ class EducationsRelationManager extends RelationManager
                 Forms\Components\TextInput::make('institution')
                     ->required()
                     ->maxLength(255),
+                Forms\Components\TextInput::make('degree')
+                    ->maxLength(255),
+                Forms\Components\TextInput::make('start_date')
+                    ->maxLength(255),
+                Forms\Components\TextInput::make('end_date')
+                    ->maxLength(255),
+                Forms\Components\TextInput::make('location')
+                    ->maxLength(255),
             ]);
     }
 
@@ -30,6 +38,9 @@ class EducationsRelationManager extends RelationManager
             ->recordTitleAttribute('institution')
             ->columns([
                 Tables\Columns\TextColumn::make('institution'),
+                Tables\Columns\TextColumn::make('degree'),
+                Tables\Columns\TextColumn::make('start_date'),
+                Tables\Columns\TextColumn::make('end_date'),
             ])
             ->filters([
                 //

@@ -21,6 +21,16 @@ class ExperiencesRelationManager extends RelationManager
                 Forms\Components\TextInput::make('position')
                     ->required()
                     ->maxLength(255),
+                Forms\Components\TextInput::make('company')
+                    ->maxLength(255),
+                Forms\Components\TextInput::make('start_date')
+                    ->maxLength(255),
+                Forms\Components\TextInput::make('end_date')
+                    ->maxLength(255),
+                Forms\Components\TextInput::make('location')
+                    ->maxLength(255),
+                Forms\Components\Textarea::make('responsibilities')
+                    ->columnSpanFull(),
             ]);
     }
 
@@ -30,6 +40,9 @@ class ExperiencesRelationManager extends RelationManager
             ->recordTitleAttribute('position')
             ->columns([
                 Tables\Columns\TextColumn::make('position'),
+                Tables\Columns\TextColumn::make('company'),
+                Tables\Columns\TextColumn::make('start_date'),
+                Tables\Columns\TextColumn::make('end_date'),
             ])
             ->filters([
                 //

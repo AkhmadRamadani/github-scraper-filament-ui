@@ -21,6 +21,11 @@ class ProjectsRelationManager extends RelationManager
                 Forms\Components\TextInput::make('name')
                     ->required()
                     ->maxLength(255),
+                Forms\Components\TextInput::make('url')
+                    ->label('URL')
+                    ->maxLength(255),
+                Forms\Components\Textarea::make('description')
+                    ->columnSpanFull(),
             ]);
     }
 
@@ -30,6 +35,9 @@ class ProjectsRelationManager extends RelationManager
             ->recordTitleAttribute('name')
             ->columns([
                 Tables\Columns\TextColumn::make('name'),
+                Tables\Columns\TextColumn::make('url')
+                    ->label('URL')
+                    ->limit(50),
             ])
             ->filters([
                 //

@@ -205,6 +205,7 @@ class ProfileResource extends Resource
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
+                Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -214,9 +215,60 @@ class ProfileResource extends Resource
             ->defaultSort('created_at', 'desc');
     }
 
+    public static function form(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Forms\Components\Section::make('Profile Information')
+                    ->schema([
+                        Forms\Components\TextInput::make('login')
+                            ->label('Username')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('name')
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('email')
+                            ->email()
+                            ->maxLength(255),
+                        Forms\Components\Textarea::make('bio')
+                            ->columnSpanFull(),
+                        Forms\Components\FileUpload::make('cv_file')
+                            ->label('CV File')
+                            ->disk('public')
+                            ->directory('cvs')
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(2),
+
+                Forms\Components\Section::make('Details')
+                    ->schema([
+                        Forms\Components\TextInput::make('company')
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('location')
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('phone')
+                            ->tel()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('blog')
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('linkedin_url')
+                            ->label('LinkedIn URL')
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('twitter_username')
+                            ->label('Twitter Username')
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('avatar_url')
+                            ->label('Avatar URL')
+                            ->maxLength(255),
+                    ])
+                    ->columns(2),
+            ]);
+    }
+
     public static function getRelations(): array
     {
         return [
+            RelationManagers\RepositoriesRelationManager::class,
             RelationManagers\ExperiencesRelationManager::class,
             RelationManagers\EducationsRelationManager::class,
             RelationManagers\ProjectsRelationManager::class,
@@ -230,7 +282,9 @@ class ProfileResource extends Resource
     {
         return [
             'index' => Pages\ListProfiles::route('/'),
+            'create' => Pages\CreateProfile::route('/create'),
             'view' => Pages\ViewProfile::route('/{record}'),
+            'edit' => Pages\EditProfile::route('/{record}/edit'),
         ];
     }
 
