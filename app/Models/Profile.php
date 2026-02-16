@@ -29,6 +29,9 @@ class Profile extends Model
         'github_updated_at',
         'html_url',
         'avatar_url',
+        'cv_file',
+        'phone',
+        'linkedin_url',
     ];
 
     protected $casts = [
@@ -50,6 +53,36 @@ class Profile extends Model
     public function repositories(): HasMany
     {
         return $this->hasMany(Repository::class);
+    }
+
+    public function experiences(): HasMany
+    {
+        return $this->hasMany(ProfileExperience::class);
+    }
+
+    public function educations(): HasMany
+    {
+        return $this->hasMany(ProfileEducation::class);
+    }
+
+    public function projects(): HasMany
+    {
+        return $this->hasMany(ProfileProject::class);
+    }
+
+    public function skills(): HasMany
+    {
+        return $this->hasMany(ProfileSkill::class);
+    }
+
+    public function certifications(): HasMany
+    {
+        return $this->hasMany(ProfileCertification::class);
+    }
+
+    public function volunteerings(): HasMany
+    {
+        return $this->hasMany(ProfileVolunteering::class);
     }
 
     /**

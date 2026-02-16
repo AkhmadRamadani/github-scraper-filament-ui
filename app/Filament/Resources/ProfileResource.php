@@ -11,6 +11,8 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
+use Illuminate\Support\Facades\Storage;
+use App\Filament\Resources\ProfileResource\RelationManagers;
 
 class ProfileResource extends Resource
 {
@@ -43,6 +45,13 @@ class ProfileResource extends Resource
                         Infolists\Components\TextEntry::make('bio')
                             ->columnSpanFull()
                             ->prose(),
+                        Infolists\Components\TextEntry::make('cv_file')
+                            ->label('CV File')
+                            ->url(fn ($record) => Storage::disk('public')->url($record->cv_file))
+                            ->openUrlInNewTab()
+                            ->visible(fn ($record) => $record->cv_file)
+                            ->icon('heroicon-m-document')
+                            ->columnSpanFull(),
                     ])
                     ->columns(3),
 
@@ -54,9 +63,17 @@ class ProfileResource extends Resource
                             ->icon('heroicon-m-map-pin'),
                         Infolists\Components\TextEntry::make('email')
                             ->icon('heroicon-m-envelope'),
+                        Infolists\Components\TextEntry::make('phone')
+                            ->icon('heroicon-m-phone')
+                            ->visible(fn ($record) => $record->phone),
                         Infolists\Components\TextEntry::make('blog')
                             ->url(fn ($record) => $record->blog, true)
                             ->icon('heroicon-m-globe-alt'),
+                        Infolists\Components\TextEntry::make('linkedin_url')
+                            ->label('LinkedIn')
+                            ->url(fn ($record) => str_starts_with($record->linkedin_url, 'http') ? $record->linkedin_url : 'https://' . $record->linkedin_url, true)
+                            ->icon('heroicon-m-link')
+                            ->visible(fn ($record) => $record->linkedin_url),
                         Infolists\Components\TextEntry::make('twitter_username')
                             ->label('Twitter')
                             ->url(fn ($record) => "https://twitter.com/{$record->twitter_username}", true)
@@ -66,6 +83,11 @@ class ProfileResource extends Resource
 
                 Infolists\Components\Section::make('Statistics')
                     ->schema([
+                        Infolists\Components\TextEntry::make('repositories_count')
+                            ->label('Total Repositories')
+                            ->state(fn ($record) => $record->repositories()->count())
+                            ->numeric()
+                            ->icon('heroicon-m-circle-stack'),
                         Infolists\Components\TextEntry::make('public_repos')
                             ->label('Public Repositories')
                             ->numeric()
@@ -190,6 +212,18 @@ class ProfileResource extends Resource
                 ]),
             ])
             ->defaultSort('created_at', 'desc');
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            RelationManagers\ExperiencesRelationManager::class,
+            RelationManagers\EducationsRelationManager::class,
+            RelationManagers\ProjectsRelationManager::class,
+            RelationManagers\SkillsRelationManager::class,
+            RelationManagers\CertificationsRelationManager::class,
+            RelationManagers\VolunteeringsRelationManager::class,
+        ];
     }
 
     public static function getPages(): array

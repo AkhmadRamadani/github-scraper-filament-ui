@@ -202,9 +202,56 @@ class ScrapeJob extends Model
 
         // Save profile
         if (isset($result['profile'])) {
-            $profile = $this->profile()->updateOrCreate(
-                ['scrape_job_id' => $this->id],
-                [
+            // Try to find profile by scrape_job_id first (if linked during import)
+            $profile = Profile::where('scrape_job_id', $this->id)->first();
+
+            // If not found, try by login or html_url
+            if (!$profile) {
+                 $profile = Profile::where('login', $result['profile']['login'])
+                                ->orWhere('html_url', $result['profile']['html_url'])
+                                ->first();
+            }
+
+            if ($profile) {
+                // Update existing profile - Merge Logic
+
+                // Append GitHub bio to existing bio
+                $newBio = $profile->bio;
+                $githubBio = $result['profile']['bio'] ?? null;
+                if ($githubBio) {
+                    if ($newBio) {
+                         // Avoid duplicating if already present
+                         if (!str_contains($newBio, $githubBio)) {
+                             $newBio .= "\n\n**GitHub Bio:**\n" . $githubBio;
+                         }
+                    } else {
+                        $newBio = $githubBio;
+                    }
+                }
+
+                $profile->update([
+                    'scrape_job_id' => $this->id, // Link to current job
+                    // Prioritize existing data from CV (if present), else use GitHub data
+                    'name' => $profile->name ?? $result['profile']['name'] ?? null,
+                    'bio' => $newBio,
+                    'company' => $profile->company ?? $result['profile']['company'] ?? null,
+                    'location' => $profile->location ?? $result['profile']['location'] ?? null,
+                    'email' => $profile->email ?? $result['profile']['email'] ?? null,
+                    'blog' => $profile->blog ?? $result['profile']['blog'] ?? null,
+                    'twitter_username' => $profile->twitter_username ?? $result['profile']['twitter_username'] ?? null,
+                    // Always update stats from GitHub
+                    'public_repos' => $result['profile']['public_repos'] ?? 0,
+                    'public_gists' => $result['profile']['public_gists'] ?? 0,
+                    'followers' => $result['profile']['followers'] ?? 0,
+                    'following' => $result['profile']['following'] ?? 0,
+                    'github_created_at' => $result['profile']['created_at'] ?? null,
+                    'github_updated_at' => $result['profile']['updated_at'] ?? null,
+                    'html_url' => $result['profile']['html_url'], // Ensure correct GitHub URL
+                    'avatar_url' => $profile->avatar_url ?? $result['profile']['avatar_url'] ?? null,
+                ]);
+            } else {
+                // Create new profile if not exists
+                $profile = $this->profile()->create([
                     'login' => $result['profile']['login'],
                     'name' => $result['profile']['name'] ?? null,
                     'bio' => $result['profile']['bio'] ?? null,
@@ -221,8 +268,8 @@ class ScrapeJob extends Model
                     'github_updated_at' => $result['profile']['updated_at'] ?? null,
                     'html_url' => $result['profile']['html_url'],
                     'avatar_url' => $result['profile']['avatar_url'] ?? null,
-                ]
-            );
+                ]);
+            }
         }
 
         // Save repositories
